@@ -5,14 +5,14 @@ a laser pulse. It implements the same pulse shapes and most of the features of
 the [laserfields library](https://github.com/jfeist/laserfields) written in
 Fortran. Please see the documentation of that library for the parameter
 meanings, conventions used, etc. In particular, the "main" function
-`make_laser_field(**kwargs...)` accepts the same parameters as the Fortran library
+`make_laserfield(**kwargs...)` accepts the same parameters as the Fortran library
 parameter files as keyword arguments, and returns an instance of a subtype of
 the base class `LaserField` depending on the parameters. E.g., to create
 a Gaussian pulse with a duration (defined as the FWHM of the intensity) of 6 fs,
 a wavelength of 800 nm, a peak intensity of 1e14 W/cm^2, and with the peak at
 time t=7fs, one should call
 ```python
-lf = make_laser_field(form="gaussianI", is_vecpot=true, lambda_nm=800,
+lf = make_laserfield(form="gaussianI", is_vecpot=true, lambda_nm=800,
                       intensity_Wcm2=1e16, duration_as=6000, peak_time_as=7000)
 ```
 

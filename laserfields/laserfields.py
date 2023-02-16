@@ -249,7 +249,7 @@ class InterpolatingLaserField(LaserField):
         self.is_vecpot = is_vecpot
         self.datafile = datafile
 
-        # print('# Reading laser_field from file:', datafile)
+        # print('# Reading laserfield from file:', datafile)
         data = np.loadtxt(datafile,unpack=True)
         if data.shape[0] != 2:
             raise ValueError(f"Laser field datafile '{datafile}' must contain two columns: time and field")
@@ -306,7 +306,7 @@ def select_param(args, param_names, default=None):
         raise ValueError(f"You need to specify one out of: {', '.join(param_names)}!")
     return default
 
-def make_laser_field(*, form: str, is_vecpot: bool, **kwargs):
+def make_laserfield(*, form: str, is_vecpot: bool, **kwargs):
     if form == 'readin':
         return InterpolatingLaserField(is_vecpot,kwargs['datafile'])
 
