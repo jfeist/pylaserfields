@@ -109,6 +109,12 @@ class LaserField:
     def end_time(self):
         raise NotImplementedError()
 
+    """returns the "effective duration" of a laser field for n-photon processes
+    the values for T_eff are calculated according to
+    I_0^n * T_eff = \Int_0^T I(t)^n dt = \Int_0^T envelope(t)^(2n) dt"""
+    def Teff(self,n_photon):
+        raise NotImplementedError()
+
 @dataclass
 class GaussianLaserField(LaserField):
     σ: float
@@ -123,6 +129,7 @@ class GaussianLaserField(LaserField):
         return self.E0 * exp(-omega**2/(4*z)) / sqrt(2*z)
     start_time = property(lambda self: self.t0 - GAUSSIAN_TIME_CUTOFF_SIGMA*self.σ)
     end_time   = property(lambda self: self.t0 + GAUSSIAN_TIME_CUTOFF_SIGMA*self.σ)
+    Teff = lambda self,n_photon: self.σ * sqrt(π/n_photon)
 
 def expiatbt2_intT(a,b,T):
     # returns the result of the integral Int(exp(i*(a*t+b*t**2)),{t,-T/2,T/2}) / sqrt(2*pi)
@@ -193,6 +200,7 @@ class SinExpLaserField(LaserField):
 
     start_time = property(lambda self: self.t0 - self.T/2)
     end_time   = property(lambda self: self.t0 + self.T/2)
+    Teff = lambda self,n_photon: self.T * gamma(0.5 + n_photon*self.exponent) / (sqrt(π)*gamma(1 + n_photon*self.exponent))
 
 @dataclass
 class FlatTopLaserField(LaserField):
@@ -231,6 +239,7 @@ class LinearFlatTopLaserField(FlatTopLaserField):
         if self.chirp != 0.:
             raise NotImplementedError('Fourier transform of "linear" field with chirp not implemented!')
         return self.E0 * sqrt(8/π) * np.sinc(omega*self.Tramp/(2*π)) * np.sinc(omega*(self.Tramp+self.Tflat)/(2*π)) * (self.Tramp+self.Tflat)/4
+    Teff = lambda self,n_photon: self.Tflat + 2*self.Tramp / (1+2*n_photon)
 
 class Linear2FlatTopLaserField(FlatTopLaserField):
     ramponfunc   = staticmethod(lambda trel: sin(π/2*trel)**2)
@@ -239,6 +248,7 @@ class Linear2FlatTopLaserField(FlatTopLaserField):
         if self.chirp != 0.:
             raise NotImplementedError('Fourier transform of "linear2" field with chirp not implemented!')
         return self.E0 * sqrt(2*π**3) * cos(omega*self.Tramp/2) * np.sinc(omega*(self.Tramp+self.Tflat)/(2*π)) * (self.Tramp+self.Tflat)/ (2*π**2 - 2*self.Tramp**2*omega**2)
+    Teff = lambda self,n_photon: self.Tflat + 2*self.Tramp * gamma(0.5+n_photon*2) / (sqrt(π)*gamma(1+n_photon*2))
 
 @dataclass
 class InterpolatingLaserField(LaserField):
