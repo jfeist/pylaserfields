@@ -34,7 +34,7 @@ class LaserField:
 
     def E(self,t):
         tr = np.asarray(t) - self.t0
-        env, envpr = self.envelope(tr)
+        env, envpr = self._envelope(tr)
         phit = self.ϕ0 + self.ω0*tr + self.chirp*tr**2
         osc = sin(phit)
 
@@ -50,12 +50,15 @@ class LaserField:
             raise ValueError('laser field is not given as a vector potential, cannot get A(t) analytically!')
 
         tr = np.asarray(t) - self.t0
-        env, envpr = self.envelope(tr)
+        env, envpr = self._envelope(tr)
         osc = sin(self.ϕ0 + self.ω0*tr + self.chirp*tr**2)
         # Divide out derivative of oscillation to ensure peak amplitude of E0 for electric field
         return env*osc / self.ω0
 
-    def envelope(self,tr):
+    def envelope(self,t):
+        return self._envelope(np.asarray(t) - self.t0)[0]
+
+    def _envelope(self,tr):
         raise NotImplementedError()
 
     """return the fourier transform of the envelope of the laser field.
@@ -66,7 +69,7 @@ class LaserField:
     however, for unchirped pulses, the result will be purely real!
 
     for the various calculations, see chirped_fourier.nb in the mathematica directory."""
-    def envelope_fourier(self,omega):
+    def _envelope_fourier(self,omega):
         raise NotImplementedError()
 
     def E_fourier(self,omega):
@@ -82,8 +85,8 @@ class LaserField:
         # F[f(t) exp(IU w0 t)](w) = F[f(t)](w-w0)
         # complex conjugation of the transformed function gives complex conjugation + reversal of the argument in the transform, so
         # F[conjg(f(t) exp(IU w0 t))](w) = conjg(F[f(t) exp(IU w0 t)](-w)) = conjg(F[f(t)](-w-w0))
-        ELFT = (   self.envelope_fourier( omega - self.ω0) * exp(1j*self.ϕ0)
-                - (self.envelope_fourier(-omega - self.ω0) * exp(1j*self.ϕ0)).conj()) / (2j)
+        ELFT = (   self._envelope_fourier( omega - self.ω0) * exp(1j*self.ϕ0)
+                - (self._envelope_fourier(-omega - self.ω0) * exp(1j*self.ϕ0)).conj()) / (2j)
 
         # the fourier transform of the part was determined as if it was centered around t=0
         # shift in time now -- just adds a phase exp(-IU*omega*t0), as F[f(t-a)] = exp(-IU*omega*a) F[f(t)]
@@ -119,11 +122,11 @@ class LaserField:
 class GaussianLaserField(LaserField):
     σ: float
 
-    def envelope(self,tr):
+    def _envelope(self,tr):
         env   = self.E0 * exp(-tr**2/(2*self.σ**2))
         envpr = -env * tr/self.σ**2
         return env,envpr
-    def envelope_fourier(self,omega):
+    def _envelope_fourier(self,omega):
         # F[exp(-z*t**2)] = exp(-w**2/4*z)/sqrt(2*z) (for real(z)>0)
         z = 0.5/self.σ**2 - 1j*self.chirp
         return self.E0 * exp(-omega**2/(4*z)) / sqrt(2*z)
@@ -147,10 +150,10 @@ class SinExpLaserField(LaserField):
     T: float
     exponent: float
 
-    def envelope(self,tr):
-        if not hasattr(self,'_envelope'):
+    def _envelope(self,tr):
+        if not hasattr(self,'_jit_envelope'):
             @vectorize(nopython=True)
-            def _jit_env(tr,E0,T,exponent,getprime):
+            def _jit_envelope(tr,E0,T,exponent,getprime):
                 trel = tr/T
                 if abs(trel) > 0.5:
                     return 0.
@@ -158,11 +161,11 @@ class SinExpLaserField(LaserField):
                     return -E0 * sin(π*trel) * exponent * cos(π*trel)**(exponent-1) * π/T
                 else:
                     return E0 * cos(π*trel)**exponent
-            self._envelope = _jit_env
-        env   = self._envelope(tr,self.E0,self.T,self.exponent,False)
-        envpr = self._envelope(tr,self.E0,self.T,self.exponent,True)
+            self._jit_envelope = _jit_envelope
+        env   = self._jit_envelope(tr,self.E0,self.T,self.exponent,False)
+        envpr = self._jit_envelope(tr,self.E0,self.T,self.exponent,True)
         return env,envpr
-    def envelope_fourier(self,omega):
+    def _envelope_fourier(self,omega):
         if self.exponent == 2:
             if self.chirp == 0:
                 # the expression with chirp can not be evaluated with chirp == 0, so we take this as a special case
@@ -207,13 +210,13 @@ class FlatTopLaserField(LaserField):
     Tflat: float
     Tramp: float
 
-    def envelope(self,tr):
+    def _envelope(self,tr):
         # we cannot pass functions to numba, so make a closure
-        if not hasattr(self,'_envelope'):
+        if not hasattr(self,'_jit_envelope'):
             ramponfunc = njit(self.ramponfunc)
             ramponfuncpr = njit(self.ramponfuncpr)
             @vectorize(nopython=True)
-            def _jit_env(tr,E0,Tflat,Tramp,getprime):
+            def _jit_envelope(tr,E0,Tflat,Tramp,getprime):
                 if abs(tr) > Tflat/2 + Tramp:
                     return 0.
                 elif abs(tr) > Tflat/2:
@@ -224,9 +227,9 @@ class FlatTopLaserField(LaserField):
                         return E0*ramponfunc(trel)
                 else:
                     return 0. if getprime else E0
-            self._envelope = _jit_env
-        env   = self._envelope(tr,self.E0,self.Tflat,self.Tramp,False)
-        envpr = self._envelope(tr,self.E0,self.Tflat,self.Tramp,True)
+            self._jit_envelope = _jit_envelope
+        env   = self._jit_envelope(tr,self.E0,self.Tflat,self.Tramp,False)
+        envpr = self._jit_envelope(tr,self.E0,self.Tflat,self.Tramp,True)
         return env,envpr
 
     start_time = property(lambda self: self.t0 - self.Tflat/2 - self.Tramp)
@@ -235,7 +238,7 @@ class FlatTopLaserField(LaserField):
 class LinearFlatTopLaserField(FlatTopLaserField):
     ramponfunc   = staticmethod(lambda trel: trel)
     ramponfuncpr = staticmethod(lambda trel: 1.)
-    def envelope_fourier(self,omega):
+    def _envelope_fourier(self,omega):
         if self.chirp != 0.:
             raise NotImplementedError('Fourier transform of "linear" field with chirp not implemented!')
         return self.E0 * sqrt(8/π) * np.sinc(omega*self.Tramp/(2*π)) * np.sinc(omega*(self.Tramp+self.Tflat)/(2*π)) * (self.Tramp+self.Tflat)/4
@@ -244,7 +247,7 @@ class LinearFlatTopLaserField(FlatTopLaserField):
 class Linear2FlatTopLaserField(FlatTopLaserField):
     ramponfunc   = staticmethod(lambda trel: sin(π/2*trel)**2)
     ramponfuncpr = staticmethod(lambda trel: sin(π*trel) * π/2)
-    def envelope_fourier(self,omega):
+    def _envelope_fourier(self,omega):
         if self.chirp != 0.:
             raise NotImplementedError('Fourier transform of "linear2" field with chirp not implemented!')
         return self.E0 * sqrt(2*π**3) * cos(omega*self.Tramp/2) * np.sinc(omega*(self.Tramp+self.Tflat)/(2*π)) * (self.Tramp+self.Tflat)/ (2*π**2 - 2*self.Tramp**2*omega**2)
