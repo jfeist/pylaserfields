@@ -1,6 +1,6 @@
 """Python library for describing time-dependent laserfields by Johannes Feist."""
 
-__version__ = '0.2.1'
+__version__ = '0.3.0'
 
 __all__ = ['make_laserfield', 'GaussianLaserField', 'SinExpLaserField',
            'LinearFlatTopLaserField', 'Linear2FlatTopLaserField', 'InterpolatingLaserField']
