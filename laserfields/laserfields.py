@@ -2,7 +2,7 @@ import numpy as np
 from numpy import exp, log, sin, cos, sqrt, pi as π
 from dataclasses import dataclass
 from scipy.interpolate import InterpolatedUnivariateSpline
-from scipy.special import gamma, erf
+from scipy.special import gamma, erf, binom
 from numba import njit, vectorize
 
 au_as   = 1/24.188843265     # attosecond in a.u.
@@ -136,6 +136,8 @@ class GaussianLaserField(LaserField):
 
 def expiatbt2_intT(a,b,T):
     # returns the result of the integral Int(exp(i*(a*t+b*t**2)),{t,-T/2,T/2}) / sqrt(2*pi)
+    if b==0:
+        return sqrt(2/π)/a * sin(a*T/2)
     zz1 = (1+1j)/4
     z34 = (-1.+1j)/sqrt(2) # == (-1)**(3/4)
     b = complex(b) # we want to take the square root and b might be negative
@@ -166,40 +168,16 @@ class SinExpLaserField(LaserField):
         envpr = self._jit_envelope(tr,self.E0,self.T,self.exponent,True)
         return env,envpr
     def _envelope_fourier(self,omega):
-        if self.exponent == 2:
-            if self.chirp == 0:
-                # the expression with chirp can not be evaluated with chirp == 0, so we take this as a special case
-                return self.E0 * sqrt(8*π**3) * np.sinc(omega*self.T/(2*π))/(8*π**2/self.T - 2*omega**2*self.T)
-            else:
-                # now we use that cos(pi*t/T)**2 * exp(i*c*t**2) can be written as 0.5 exp(i*c*t**2) + 0.25 exp(i*c*t**2 - 2*i*pi*t/T) + 0.25 exp(i*c*t**2 + 2*i*pi*t/T)
-                # the integral of exp(IU*(a*t+b*t**2)) from t=-T/2 to t=T/2 can be calculated analytically and is implemented in the function below
-                # the arguments are a={-omega, -2*pi/T-omega, 2*pi/T-omega} and b=chirp
-                wd = 2*π/self.T
-                return self.E0 * (expiatbt2_intT(    - omega, self.chirp, self.T)/2 +
-                                  expiatbt2_intT(-wd - omega, self.chirp, self.T)/4 +
-                                  expiatbt2_intT( wd - omega, self.chirp, self.T)/4)
-        elif self.exponent == 4:
-            if self.chirp == 0:
-                # the expression with chirp can not be evaluated with chirp == 0, so we take this as a special case
-                return self.E0 * 24 * (sqrt(2*π**7) * np.sinc(omega*self.T/(2*π)) /
-                                       (128*π**4/self.T - 40*π**2*omega**2*self.T + 2*omega**4*self.T**3))
-            else:
-                # now we use that cos(pi*t/T)**4 * exp(i*c*t**2) can be written as
-                # (0.375 exp(i*c*t**2) + 0.25 exp(i*c*t**2 - 2*i*pi*t/T) + 0.25 exp(i*c*t**2 + 2*i*pi*t/T) +
-                #  0.0625 exp(i*c*t**2 - 4*i*pi*t/T) + 0.0625 exp(i*c*t**2 + 4*i*pi*t/T))
-                # the integral of exp(IU*(a*t+b*t**2)) from t=-T/2 to t=T/2 can be calculated analytically and is implemented in the function below
-                # the arguments are a={-omega, -2*pi/T-omega, 2*pi/T-omega, -4*pi/T-omega, 4*pi/T-omega} and b=chirp
-                wd = 2*π/self.T
-                return self.E0 * (expiatbt2_intT(      - omega, self.chirp, self.T)*0.375  +
-                                  expiatbt2_intT(  -wd - omega, self.chirp, self.T)*0.25   +
-                                  expiatbt2_intT(   wd - omega, self.chirp, self.T)*0.25   +
-                                  expiatbt2_intT(-2*wd - omega, self.chirp, self.T)*0.0625 +
-                                  expiatbt2_intT( 2*wd - omega, self.chirp, self.T)*0.0625)
-        else:
-            if self.chirp != 0 or not float(self.exponent).is_integer():
-                raise NotImplementedError('sin_exp fourier transform with exponent != 2 or 4 only implemented for integer exponents and unchirped pulses')
-            x = 0.5*(omega*self.T/π - self.exponent)
-            return self.E0 * self.T * gamma(self.exponent+1)*gamma(x)*sin(π*x)/(sqrt(2**(2*self.exponent+1) * π**3) * gamma(x+self.exponent+1))
+        if not float(self.exponent).is_integer():
+            raise NotImplementedError('sin_exp fourier transform only implemented for integer exponents')
+        # rewrite the envelope as a sum of exponentials, which are easy to Fourier transform over a limited time interval
+        # cos(πt/T)^n = 1/2^n (exp(iπt/T)+ exp(-iπt/T))^n = 1/2^n sum_k=0^n exp(i(n-2k)πt/T) binomial(n,k)
+        n = int(self.exponent)
+        wd = π/self.T
+        res = 0j*omega
+        for k in range(0,n+1):
+            res += expiatbt2_intT((n-2*k)*wd - omega, self.chirp, self.T) * binom(n,k)
+        return self.E0/2**n * res
 
     start_time = property(lambda self: self.t0 - self.T/2)
     end_time   = property(lambda self: self.t0 + self.T/2)
