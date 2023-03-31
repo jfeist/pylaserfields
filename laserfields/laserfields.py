@@ -18,6 +18,9 @@ au_m_n  = 1838.6836605       # m of neutron in a.u.
 
 GAUSSIAN_TIME_CUTOFF_SIGMA = 3.5*sqrt(log(256))
 
+def intensity_Wcm2_to_Eau(IWcm2):
+    return np.sqrt(IWcm2 * au_wcm2toel2)
+
 @dataclass
 class LaserField:
     is_vecpot: bool
@@ -302,7 +305,7 @@ def make_laserfield(*, form: str, is_vecpot: bool, **kwargs):
         return InterpolatingLaserField(is_vecpot,kwargs['datafile'])
 
     args = dict(is_vecpot=is_vecpot)
-    args['E0'] = select_param(kwargs, {'E0': lambda: kwargs['E0'], 'intensity_Wcm2': lambda: np.sqrt(kwargs['intensity_Wcm2'] * au_wcm2toel2)})
+    args['E0'] = select_param(kwargs, {'E0': lambda: kwargs['E0'], 'intensity_Wcm2': lambda: intensity_Wcm2_to_Eau(kwargs['intensity_Wcm2'])})
     args['ω0'] = select_param(kwargs, {'ω0': lambda: kwargs['ω0'], 'omega': lambda: kwargs['omega'], 'lambda_nm': lambda: 2*np.pi*au_c / (kwargs['lambda_nm'] * au_nm)})
     args['φ0'] = select_param(kwargs, {'φ0': lambda: kwargs['φ0'], 'ϕ0': lambda: kwargs['ϕ0'], 'phase_pi': lambda: np.pi*kwargs['phase_pi']}, 0.)
     args['chirp'] = select_param(kwargs, {'chirp': lambda: kwargs['chirp'], 'linear_chirp_rate_w0as': lambda: args['ω0'] * kwargs['linear_chirp_rate_w0as'] / au_as}, 0.)
