@@ -291,6 +291,34 @@ class InterpolatingLaserField(LaserField):
     def A(self,t):
         return self._A(t)
 
+class LaserFieldCollection(LaserField):
+    lfs: list[LaserField]
+
+    def __init__(self,lfs):
+        self.lfs = lfs
+        # these are all just "dummy" values that are somewhat reasonable
+        self.is_vecpot = all([lf.is_vecpot for lf in lfs])
+        self.E0 = np.max([lf.E0 for lf in lfs])
+        # this is so that TX gives the shortest period (useful for estimating the maximum timestep in propagation)
+        self.ω0 = np.max([lf.ω0 for lf in lfs])
+        # this is supposed to be the peak time of the whole collection - we set it to the central time
+        self.t0 = (self.start_time + self.end_time)/2
+        self.chirp = 0.
+        self.ϕ0  = 0.
+
+    def E(self,t):
+        return np.sum([lf.E(t) for lf in self.lfs],axis=0)
+    def A(self,t):
+        return np.sum([lf.A(t) for lf in self.lfs],axis=0)
+    def E_fourier(self,omega):
+        return np.sum([lf.E_fourier(omega) for lf in self.lfs],axis=0)
+    @property
+    def start_time(self):
+        return np.min([lf.start_time for lf in self.lfs])
+    @property
+    def end_time(self):
+        return np.max([lf.end_time for lf in self.lfs])
+
 def select_param(args, param_names, default=None):
     n = sum(1 for name in param_names if name in args)
     if n > 1:
