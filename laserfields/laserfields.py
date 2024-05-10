@@ -115,7 +115,7 @@ class LaserField:
     def end_time(self):
         raise NotImplementedError()
 
-    """returns the "effective duration" of a laser field for n-photon processes
+    r"""returns the "effective duration" of a laser field for n-photon processes
     the values for T_eff are calculated according to
     I_0^n * T_eff = \Int_0^T I(t)^n dt = \Int_0^T envelope(t)^(2n) dt"""
     def Teff(self,n_photon):
@@ -248,6 +248,8 @@ class InterpolatingLaserField(LaserField):
         if data.shape[0] != 2:
             raise ValueError(f"Laser field datafile '{datafile}' must contain two columns: time and field")
         tt, ff = data
+        self._tt = tt
+        self._ff = ff
 
         # print('# Number of data points found:', len(tt))
         if not np.all(tt[1:] >= tt[:-1]):
@@ -280,8 +282,8 @@ class InterpolatingLaserField(LaserField):
         self.chirp = 0.
         self.ϕ0 = 0.
 
-    start_time = property(lambda self: self.tt[0])
-    end_time   = property(lambda self: self.tt[-1])
+    start_time = property(lambda self: self._tt[0])
+    end_time   = property(lambda self: self._tt[-1])
     TX = property(lambda self: self._TX)
 
     def E(self,t):
