@@ -64,15 +64,15 @@ class LaserField:
     def _envelope(self,tr):
         raise NotImplementedError()
 
-    """return the fourier transform of the envelope of the laser field.
-    we write the whole pulse as
-    f(t) = (env(t) exp(i*(phi0 + w0*tp + chirp*tp**2)) + c.c. ) / (2*IU), where tp = t-tpeak
-    for the fourier transform of the envelope, we include the chirp term
-    exp(i chirp (t-tpeak)**2) in the envelope, so that its fourier transform is a complex function.
-    however, for unchirped pulses, the result will be purely real!
-
-    for the various calculations, see chirped_fourier.nb in the mathematica directory."""
     def _envelope_fourier(self,omega):
+        # return the fourier transform of the envelope of the laser field.
+        # we write the whole pulse as
+        # f(t) = (env(t) exp(i*(phi0 + w0*tp + chirp*tp**2)) + c.c. ) / (2*IU), where tp = t-tpeak
+        # for the fourier transform of the envelope, we include the chirp term
+        # exp(i chirp (t-tpeak)**2) in the envelope, so that its fourier transform is a complex function.
+        # however, for unchirped pulses, the result will be purely real!
+
+        # for the various calculations, see chirped_fourier.nb in the mathematica directory.
         raise NotImplementedError()
 
     def E_fourier(self,omega):
@@ -115,10 +115,11 @@ class LaserField:
     def end_time(self):
         raise NotImplementedError()
 
-    r"""returns the "effective duration" of a laser field for n-photon processes
-    the values for T_eff are calculated according to
-    I_0^n * T_eff = \Int_0^T I(t)^n dt = \Int_0^T envelope(t)^(2n) dt"""
     def Teff(self,n_photon):
+        r"""returns the "effective duration" of a laser field for n-photon processes.
+
+        The values for T_eff are calculated according to
+        I_0^n * T_eff = \Int_0^T I(t)^n dt = \Int_0^T envelope(t)^(2n) dt"""
         raise NotImplementedError()
 
 @dataclass
