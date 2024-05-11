@@ -40,9 +40,9 @@ def test_LaserFieldCollection():
 def test_readin_vecpot():
     lf = InterpolatingLaserField(datafile="tests/laserdat.dat", is_vecpot=True)
     assert lf.is_vecpot == True
-    assert lf.E0 == 0.15985646054964597
-    assert lf.ω0 == 0.160976529593676
-    assert lf.t0 == 353.38806594930224
+    assert np.isclose(lf.E0, 0.15985646054964597)
+    assert np.isclose(lf.ω0, 0.160976529593676)
+    assert np.isclose(lf.t0, 353.38806594930224)
     assert lf.duration == 700.0
     assert lf.ϕ0 == 0.0
     assert lf.chirp == 0.0
@@ -53,9 +53,9 @@ def test_readin_vecpot():
 def test_readin_efield():
     lf = InterpolatingLaserField(datafile="tests/laserdat.dat", is_vecpot=False)
     assert lf.is_vecpot == False
-    assert lf.E0 == 0.9968360392353086
-    assert lf.ω0 == 0.1600000889708898
-    assert lf.t0 == 343.6504511282523
+    assert np.isclose(lf.E0, 0.9968360392353086)
+    assert np.isclose(lf.ω0, 0.1600000889708898)
+    assert np.isclose(lf.t0, 343.6504511282523)
     assert lf.duration == 700.0
     assert lf.ϕ0 == 0.0
     assert lf.chirp == 0.0
