@@ -18,7 +18,7 @@ test_fields = [
 def test_general_args():
     for lf in test_fields:
         assert isinstance(lf, LaserField)
-        assert lf.is_vecpot == True
+        assert lf.is_vecpot is True
         assert lf.E0 == 1.5
         assert lf.ω0 == 0.12
         assert lf.t0 == 500
@@ -39,7 +39,7 @@ def test_LaserFieldCollection():
 
 def test_readin_vecpot():
     lf = InterpolatingLaserField(datafile="tests/laserdat.dat", is_vecpot=True)
-    assert lf.is_vecpot == True
+    assert lf.is_vecpot is True
     assert np.isclose(lf.E0, 0.15985646054964597)
     assert np.isclose(lf.ω0, 0.160976529593676)
     assert np.isclose(lf.t0, 353.38806594930224)
@@ -52,7 +52,7 @@ def test_readin_vecpot():
 
 def test_readin_efield():
     lf = InterpolatingLaserField(datafile="tests/laserdat.dat", is_vecpot=False)
-    assert lf.is_vecpot == False
+    assert lf.is_vecpot is False
     assert np.isclose(lf.E0, 0.9968360392353086)
     assert np.isclose(lf.ω0, 0.1600000889708898)
     assert np.isclose(lf.t0, 343.6504511282523)
@@ -67,7 +67,7 @@ def test_make_laserfield():
     lf = make_laserfield(form="gaussianI", is_vecpot=True, phase_pi=1, duration_as=100.,
                          peak_time_as=400, intensity_Wcm2=1e14, lambda_nm=12., linear_chirp_rate_w0as=0.)
     assert isinstance(lf, GaussianLaserField)
-    assert lf.is_vecpot == True
+    assert lf.is_vecpot is True
     assert lf.σ == 100. * laserfields.au_as / np.sqrt(np.log(16.))
     assert lf.t0 == 400. * laserfields.au_as
     assert lf(lf.t0) == lf.E0
