@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import exp, log, sin, cos, sqrt, pi as π
+from numpy import exp, log, sqrt, sin, cos, sinc, pi as π
 from dataclasses import dataclass
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.special import gamma, erf, binom
@@ -20,7 +20,7 @@ GAUSSIAN_TIME_CUTOFF_SIGMA = 3.5 * sqrt(log(256))
 
 
 def intensity_Wcm2_to_Eau(IWcm2):
-    return np.sqrt(IWcm2 * au_wcm2toel2)
+    return sqrt(IWcm2 * au_wcm2toel2)
 
 
 @dataclass
@@ -148,16 +148,17 @@ class GaussianLaserField(LaserField):
 
 def expiatbt2_intT(a, b, T):
     # returns the result of the integral Int(exp(i*(a*t+b*t**2)),{t,-T/2,T/2}) / sqrt(2*pi)
-    if b == 0:
-        return sqrt(2 / π) / a * sin(a * T / 2)
+    if abs(b) * T**2 < 1e-8:
+        # use first-order expansion for small b to avoid numerical divergence
+        x1 = 2j * b / a**2
+        x2 = x1 * cos(a * T / 2) + (1 - x1 + 0.25j * b * T**2) * sinc(a * T / (2 * π))
+        return x2 * T / sqrt(2 * π)
     zz1 = (1 + 1j) / 4
     z34 = (-1.0 + 1j) / sqrt(2)  # == (-1)**(3/4)
     b = complex(b)  # we want to take the square root and b might be negative
     res = erf(z34 * (a - b * T) / sqrt(4 * b)) - erf(z34 * (a + b * T) / sqrt(4 * b))
     res = res * zz1 / sqrt(b) * exp(-1j * a**2 / (4 * b))
-    # this is surprisingly not given by mathematica - not sure yet why it misses it,
-    # but it's necessary for agreement with the numerical fourier transform
-    return res * np.sign(b)
+    return res
 
 
 @dataclass
@@ -242,7 +243,7 @@ class LinearFlatTopLaserField(FlatTopLaserField):
     def _envelope_fourier(self, omega):
         if self.chirp != 0.0:
             raise NotImplementedError('Fourier transform of "linear" field with chirp not implemented!')
-        return self.E0 * sqrt(8 / π) * np.sinc(omega * self.Tramp / (2 * π)) * np.sinc(omega * (self.Tramp + self.Tflat) / (2 * π)) * (self.Tramp + self.Tflat) / 4
+        return self.E0 * sqrt(8 / π) * sinc(omega * self.Tramp / (2 * π)) * sinc(omega * (self.Tramp + self.Tflat) / (2 * π)) * (self.Tramp + self.Tflat) / 4
 
     def Teff(self, n_photon):
         return self.Tflat + 2 * self.Tramp / (1 + 2 * n_photon)
@@ -255,7 +256,7 @@ class Linear2FlatTopLaserField(FlatTopLaserField):
     def _envelope_fourier(self, omega):
         if self.chirp != 0.0:
             raise NotImplementedError('Fourier transform of "linear2" field with chirp not implemented!')
-        return self.E0 * sqrt(2 * π**3) * cos(omega * self.Tramp / 2) * np.sinc(omega * (self.Tramp + self.Tflat) / (2 * π)) * (self.Tramp + self.Tflat) / (2 * π**2 - 2 * self.Tramp**2 * omega**2)
+        return self.E0 * sqrt(2 * π**3) * cos(omega * self.Tramp / 2) * sinc(omega * (self.Tramp + self.Tflat) / (2 * π)) * (self.Tramp + self.Tflat) / (2 * π**2 - 2 * self.Tramp**2 * omega**2)
 
     def Teff(self, n_photon):
         return self.Tflat + 2 * self.Tramp * gamma(0.5 + n_photon * 2) / (sqrt(π) * gamma(1 + n_photon * 2))
