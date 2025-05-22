@@ -104,3 +104,35 @@ def test_Teff():
         for n_photon, T in enumerate(Teffs, start=1):
             lf = make_laserfield(form=form, is_vecpot=True, duration=1000.0, rampon=100.0, E0=1.0, omega=1.0, t0=0.0)
             assert np.isclose(lf.Teff(n_photon), T)
+
+
+def test_fourier():
+    # Test the Fourier transform of the laser fields
+    # Compare the analytical Fourier transform with the numerical one (computed using FFT)
+    for chirp in -1e-3, -1e-20, 0, 1e-20, 1e-3:
+        general_args = dict(is_vecpot=True, E0=1.5, ω0=0.12, t0=500.0, chirp=chirp, ϕ0=0.8 * np.pi)
+        for lf in [
+            GaussianLaserField(**general_args, σ=100.0),
+            SinExpLaserField(**general_args, T=800.0, exponent=2),
+            SinExpLaserField(**general_args, T=800.0, exponent=4),
+            SinExpLaserField(**general_args, T=800.0, exponent=7),
+            LinearFlatTopLaserField(**general_args, Tflat=400.0, Tramp=150),
+            Linear2FlatTopLaserField(**general_args, Tflat=400.0, Tramp=150),
+        ]:
+            if isinstance(lf, (LinearFlatTopLaserField, Linear2FlatTopLaserField)) and chirp != 0:
+                # Skip the test for LinearFlatTopLaserField with non-zero chirp
+                # because the analytical Fourier transform is not implemented for this case
+                continue
+            T = lf.end_time - lf.start_time
+            t0 = lf.start_time - 5 * T
+            t1 = lf.end_time + 5 * T
+            dt = lf.TX / 100
+            ts = np.arange(t0, t1, dt)
+            ωs = 2 * np.pi * np.fft.fftfreq(len(ts), dt)
+            Eω = lf.E_fourier(ωs)
+            Eω2 = np.fft.fft(lf(ts)) * dt / np.sqrt(2 * np.pi)
+            # FFT acts as if ts[0] was t=0, shift to the correct value
+            Eω2 *= np.exp(-1j * ts[0] * ωs)
+
+            atol = 0.02 if isinstance(lf, LinearFlatTopLaserField) else 1e-4
+            assert np.allclose(Eω, Eω2, atol=atol), f"Failed for {lf.__class__.__name__} with chirp {chirp}"
