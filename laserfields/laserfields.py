@@ -148,10 +148,15 @@ class GaussianLaserField(LaserField):
 
 def expiatbt2_intT(a, b, T):
     # returns the result of the integral Int(exp(i*(a*t+b*t**2)),{t,-T/2,T/2}) / sqrt(2*pi)
-    if abs(b) * T**2 < 1e-8:
-        # use first-order expansion for small b to avoid numerical divergence
-        x1 = 2j * b / a**2
-        x2 = x1 * cos(a * T / 2) + (1 - x1 + 0.25j * b * T**2) * sinc(a * T / (2 * π))
+    bTsq = b * T**2
+    if abs(bTsq) <= 1e-5:
+        aT = a * T
+        # use first-order expansion for small b to avoid numerical errors
+        # + 1e-250 to avoid division by zero
+        x1 = 2j * b / (a**2 + 1e-250)
+        x2 = x1 * cos(aT / 2) + (1 - x1 + 0.25j * bTsq) * sinc(aT / (2 * π))
+        # avoid numerical errors for small aT
+        x2 = np.where(abs(aT) < 1e-8, 1 + 1j/12 * bTsq - bTsq**2/160, x2)
         return x2 * T / sqrt(2 * π)
     zz1 = (1 + 1j) / 4
     z34 = (-1.0 + 1j) / sqrt(2)  # == (-1)**(3/4)

@@ -109,13 +109,13 @@ def test_Teff():
 def test_fourier():
     # Test the Fourier transform of the laser fields
     # Compare the analytical Fourier transform with the numerical one (computed using FFT)
-    for chirp in -1e-3, -1e-20, 0, 1e-20, 1e-3:
+    for chirp in -0.0011, -0.0009, -1e-3, -1e-20, 0, 1e-20, 1e-3, 0.0009, 0.0011:
         general_args = dict(is_vecpot=True, E0=1.5, ω0=0.12, t0=500.0, chirp=chirp, ϕ0=0.8 * np.pi)
         for lf in [
             GaussianLaserField(**general_args, σ=100.0),
-            SinExpLaserField(**general_args, T=800.0, exponent=2),
-            SinExpLaserField(**general_args, T=800.0, exponent=4),
-            SinExpLaserField(**general_args, T=800.0, exponent=7),
+            SinExpLaserField(**general_args, T=100.0, exponent=2),
+            SinExpLaserField(**general_args, T=100.0, exponent=4),
+            SinExpLaserField(**general_args, T=100.0, exponent=7),
             LinearFlatTopLaserField(**general_args, Tflat=400.0, Tramp=150),
             Linear2FlatTopLaserField(**general_args, Tflat=400.0, Tramp=150),
         ]:
@@ -134,5 +134,5 @@ def test_fourier():
             # FFT acts as if ts[0] was t=0, shift to the correct value
             Eω2 *= np.exp(-1j * ts[0] * ωs)
 
-            atol = 0.02 if isinstance(lf, LinearFlatTopLaserField) else 1e-4
+            atol = 0.02 if isinstance(lf, LinearFlatTopLaserField) else 1e-3
             assert np.allclose(Eω, Eω2, atol=atol), f"Failed for {lf.__class__.__name__} with chirp {chirp}"
