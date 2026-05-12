@@ -208,31 +208,36 @@ class SinExpLaserField(LaserField):
         return self.T * gamma(0.5 + n_photon * self.exponent) / (sqrt(π) * gamma(1 + n_photon * self.exponent))
 
 
+def _make_flattop_jit_envelope(ramponfunc, ramponfuncpr):
+    ramponfunc_jit = njit(ramponfunc)
+    ramponfuncpr_jit = njit(ramponfuncpr)
+
+    @vectorize(nopython=True)
+    def _jit_envelope(tr, E0, Tflat, Tramp, getprime):
+        if abs(tr) > Tflat / 2 + Tramp:
+            return 0.0
+        elif abs(tr) > Tflat / 2:
+            trel = (Tramp + Tflat / 2 - abs(tr)) / Tramp
+            if getprime:
+                return -E0 * np.sign(tr) * ramponfuncpr_jit(trel) / Tramp
+            else:
+                return E0 * ramponfunc_jit(trel)
+        else:
+            return 0.0 if getprime else E0
+
+    return _jit_envelope
+
+
 @dataclass
 class FlatTopLaserField(LaserField):
     Tflat: float
     Tramp: float
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls._jit_envelope = _make_flattop_jit_envelope(cls.ramponfunc, cls.ramponfuncpr)
+
     def _envelope(self, tr):
-        # we cannot pass functions to numba, so make a closure
-        if not hasattr(self, "_jit_envelope"):
-            ramponfunc = njit(self.ramponfunc)
-            ramponfuncpr = njit(self.ramponfuncpr)
-
-            @vectorize(nopython=True)
-            def _jit_envelope(tr, E0, Tflat, Tramp, getprime):
-                if abs(tr) > Tflat / 2 + Tramp:
-                    return 0.0
-                elif abs(tr) > Tflat / 2:
-                    trel = (Tramp + Tflat / 2 - abs(tr)) / Tramp
-                    if getprime:
-                        return -E0 * np.sign(tr) * ramponfuncpr(trel) / Tramp
-                    else:
-                        return E0 * ramponfunc(trel)
-                else:
-                    return 0.0 if getprime else E0
-
-            self._jit_envelope = _jit_envelope
         env = self._jit_envelope(tr, self.E0, self.Tflat, self.Tramp, False)
         envpr = self._jit_envelope(tr, self.E0, self.Tflat, self.Tramp, True)
         return env, envpr
