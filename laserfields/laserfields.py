@@ -1,9 +1,13 @@
-import numpy as np
-from numpy import exp, log, sqrt, sin, cos, sinc, pi as π
+from __future__ import annotations
+
 from dataclasses import dataclass
-from scipy.interpolate import InterpolatedUnivariateSpline
-from scipy.special import gamma, erf, binom
+
+import numpy as np
 from numba import njit, vectorize
+from numpy import cos, exp, log, sin, sinc, sqrt
+from numpy import pi as π
+from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.special import binom, erf, gamma
 
 au_as = 1 / 24.188843265  # attosecond in a.u.
 au_wcm2toel2 = 1 / 3.509338e16  # W/cm^2 in a.u. for electric field squared
@@ -55,7 +59,7 @@ class LaserField:
             raise ValueError("laser field is not given as a vector potential, cannot get A(t) analytically!")
 
         tr = np.asarray(t) - self.t0
-        env, envpr = self._envelope(tr)
+        env, _envpr = self._envelope(tr)
         osc = sin(self.ϕ0 + self.ω0 * tr + self.chirp * tr**2)
         # Divide out derivative of oscillation to ensure peak amplitude of E0 for electric field
         return env * osc / self.ω0
@@ -78,7 +82,7 @@ class LaserField:
             raise ValueError("laser field is not given as a vector potential, cannot get A(t) analytically!")
 
         tr = np.asarray(t) - self.t0
-        env, envpr = self._envelope(tr)
+        env, _envpr = self._envelope(tr)
         phit = self.ϕ0 + self.ω0 * tr + self.chirp * tr**2
         osc = 0.5j * np.exp(-1j * phit)
         return env * osc / self.ω0
@@ -220,7 +224,7 @@ class SinExpLaserField(LaserField):
         n = int(self.exponent)
         wd = π / self.T
         res = 0j * omega
-        for k in range(0, n + 1):
+        for k in range(n + 1):
             res += expiatbt2_intT((n - 2 * k) * wd - omega, self.chirp, self.T) * binom(n, k)
         return self.E0 / 2**n * res
 
@@ -366,7 +370,7 @@ class LaserFieldCollection(LaserField):
     def __init__(self, lfs):
         self.lfs = lfs
         # these are all just "dummy" values that are somewhat reasonable
-        self.is_vecpot = all([lf.is_vecpot for lf in lfs])
+        self.is_vecpot = all(lf.is_vecpot for lf in lfs)
         self.E0 = np.max([lf.E0 for lf in lfs])
         # this is so that TX gives the shortest period (useful for estimating the maximum timestep in propagation)
         self.ω0 = np.max([lf.ω0 for lf in lfs])
@@ -420,7 +424,7 @@ def make_laserfield(*, form: str, is_vecpot: bool, **kwargs):
     if is_vecpot and form == "sin_exp" and kwargs["form_exponent"] <= 1:
         raise ValueError("envelope 'sin_exp' with is_vecpot=true requires form_exponent > 1 for continuous E-field.")
 
-    args = dict(is_vecpot=is_vecpot)
+    args = {"is_vecpot": is_vecpot}
     args["E0"] = select_param(kwargs, {"E0": lambda: kwargs["E0"], "intensity_Wcm2": lambda: intensity_Wcm2_to_Eau(kwargs["intensity_Wcm2"])})
     args["ω0"] = select_param(kwargs, {"ω0": lambda: kwargs["ω0"], "omega": lambda: kwargs["omega"], "lambda_nm": lambda: 2 * np.pi * au_c / (kwargs["lambda_nm"] * au_nm)})
     args["φ0"] = select_param(kwargs, {"φ0": lambda: kwargs["φ0"], "ϕ0": lambda: kwargs["ϕ0"], "phase_pi": lambda: np.pi * kwargs["phase_pi"]}, 0.0)
