@@ -23,15 +23,13 @@ from .laserfields import (
     intensity_Wcm2_to_Eau,
     make_laserfield,
 )
-from .laserfields import (
-    au_as as au_as,
-    au_c as au_c,
-    au_cm as au_cm,
-    au_eV as au_eV,
-    au_m as au_m,
-    au_m_He as au_m_He,
-    au_m_n as au_m_n,
-    au_nm as au_nm,
-    au_wcm2 as au_wcm2,
-    au_wcm2toel2 as au_wcm2toel2,
-)
+from .laserfields import au_as as au_as
+from .laserfields import au_c as au_c
+from .laserfields import au_cm as au_cm
+from .laserfields import au_eV as au_eV
+from .laserfields import au_m as au_m
+from .laserfields import au_m_He as au_m_He
+from .laserfields import au_m_n as au_m_n
+from .laserfields import au_nm as au_nm
+from .laserfields import au_wcm2 as au_wcm2
+from .laserfields import au_wcm2toel2 as au_wcm2toel2
