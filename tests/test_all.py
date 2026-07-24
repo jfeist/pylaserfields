@@ -5,8 +5,8 @@ import laserfields
 from laserfields import GaussianLaserField, InterpolatingLaserField, LaserFieldCollection, Linear2FlatTopLaserField, LinearFlatTopLaserField, SinExpLaserField, make_laserfield
 from laserfields.laserfields import LaserField
 
-general_args = {"is_vecpot": True, "E0": 1.5, "ω0": 0.12, "t0": 500.0, "chirp": 0.0, "ϕ0": 0.8 * np.pi}
-general_args_nonvec = {"is_vecpot": False, "E0": 1.5, "ω0": 0.12, "t0": 500.0, "chirp": 0.0, "ϕ0": 0.8 * np.pi}
+general_args = {"is_vecpot": True, "E0": 1.5, "ω0": 0.12, "t0": 500.0, "chirp": 0.0, "φ0": 0.8 * np.pi}
+general_args_nonvec = {"is_vecpot": False, "E0": 1.5, "ω0": 0.12, "t0": 500.0, "chirp": 0.0, "φ0": 0.8 * np.pi}
 test_fields = [
     GaussianLaserField(**general_args, σ=100.0),
     SinExpLaserField(**general_args, T=800.0, exponent=2),
@@ -186,7 +186,7 @@ def test_fourier():
     # Test the Fourier transform of the laser fields
     # Compare the analytical Fourier transform with the numerical one (computed using FFT)
     for chirp in -0.0011, -0.0009, -1e-3, -1e-20, 0, 1e-20, 1e-3, 0.0009, 0.0011:
-        general_args = {"is_vecpot": True, "E0": 1.5, "ω0": 0.12, "t0": 500.0, "chirp": chirp, "ϕ0": 0.8 * np.pi}
+        general_args = {"is_vecpot": True, "E0": 1.5, "ω0": 0.12, "t0": 500.0, "chirp": chirp, "φ0": 0.8 * np.pi}
         for lf in [
             GaussianLaserField(**general_args, σ=100.0),
             SinExpLaserField(**general_args, T=100.0, exponent=2),
