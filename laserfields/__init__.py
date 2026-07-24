@@ -1,6 +1,6 @@
 """Python library for describing time-dependent laserfields by Johannes Feist."""
 
-__version__ = "0.4.3"
+__version__ = "0.5.0"
 
 __all__ = [
     "intensity_Wcm2_to_Eau",

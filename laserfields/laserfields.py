@@ -60,6 +60,29 @@ class LaserField:
         # Divide out derivative of oscillation to ensure peak amplitude of E0 for electric field
         return env * osc / self.ω0
 
+    def E_posfreq(self, t):
+        tr = np.asarray(t) - self.t0
+        env, envpr = self._envelope(tr)
+        phit = self.ϕ0 + self.ω0 * tr + self.chirp * tr**2
+        osc = 0.5j * np.exp(-1j * phit)
+
+        if self.is_vecpot:
+            # d(phi(t))/dt = self.ω0 + 2*self.chirp*tr
+            oscpr = (self.ω0 + 2 * self.chirp * tr) * (-1j * osc)
+            return -(env * oscpr + envpr * osc) / self.ω0
+        else:  # describes electric field directly
+            return env * osc
+
+    def A_posfreq(self, t):
+        if not self.is_vecpot:
+            raise ValueError("laser field is not given as a vector potential, cannot get A(t) analytically!")
+
+        tr = np.asarray(t) - self.t0
+        env, envpr = self._envelope(tr)
+        phit = self.ϕ0 + self.ω0 * tr + self.chirp * tr**2
+        osc = 0.5j * np.exp(-1j * phit)
+        return env * osc / self.ω0
+
     def envelope(self, t):
         return self._envelope(np.asarray(t) - self.t0)[0]
 
@@ -156,7 +179,7 @@ def expiatbt2_intT(a, b, T):
         x1 = 2j * b / (a**2 + 1e-250)
         x2 = x1 * cos(aT / 2) + (1 - x1 + 0.25j * bTsq) * sinc(aT / (2 * π))
         # avoid numerical errors for small aT
-        x2 = np.where(abs(aT) < 1e-8, 1 + 1j/12 * bTsq - bTsq**2/160, x2)
+        x2 = np.where(abs(aT) < 1e-8, 1 + 1j / 12 * bTsq - bTsq**2 / 160, x2)
         return x2 * T / sqrt(2 * π)
     zz1 = (1 + 1j) / 4
     z34 = (-1.0 + 1j) / sqrt(2)  # == (-1)**(3/4)
@@ -330,6 +353,12 @@ class InterpolatingLaserField(LaserField):
     def A(self, t):
         return self._A(t)
 
+    def E_posfreq(self, t):
+        raise ValueError("positive-frequency decomposition not implemented for readin laser fields")
+
+    def A_posfreq(self, t):
+        raise ValueError("positive-frequency decomposition not implemented for readin laser fields")
+
 
 class LaserFieldCollection(LaserField):
     lfs: list[LaserField]
@@ -351,6 +380,12 @@ class LaserFieldCollection(LaserField):
 
     def A(self, t):
         return np.sum([lf.A(t) for lf in self.lfs], axis=0)
+
+    def E_posfreq(self, t):
+        return np.sum([lf.E_posfreq(t) for lf in self.lfs], axis=0)
+
+    def A_posfreq(self, t):
+        return np.sum([lf.A_posfreq(t) for lf in self.lfs], axis=0)
 
     def E_fourier(self, omega):
         return np.sum([lf.E_fourier(omega) for lf in self.lfs], axis=0)
@@ -379,6 +414,11 @@ def select_param(args, param_names, default=None):
 def make_laserfield(*, form: str, is_vecpot: bool, **kwargs):
     if form == "readin":
         return InterpolatingLaserField(is_vecpot, kwargs["datafile"])
+
+    if is_vecpot and form == "linear":
+        raise ValueError("envelope 'linear' cannot be used with is_vecpot=true, as the E-field would be discontinuous.")
+    if is_vecpot and form == "sin_exp" and kwargs["form_exponent"] <= 1:
+        raise ValueError("envelope 'sin_exp' with is_vecpot=true requires form_exponent > 1 for continuous E-field.")
 
     args = dict(is_vecpot=is_vecpot)
     args["E0"] = select_param(kwargs, {"E0": lambda: kwargs["E0"], "intensity_Wcm2": lambda: intensity_Wcm2_to_Eau(kwargs["intensity_Wcm2"])})
